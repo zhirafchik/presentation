@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Пилотный проект – Автокарусель слайдов</title>
+
+  <style>
+    :root {
+      --bg: #020617;
+      --accent: #38bdf8;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --card-bg: #020617;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      color: var(--text);
+    }
+
+    /* --- ЗАГОЛОВОК ВСЕГДА СВЕРХУ --- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #000 100%);
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px 16px 8px;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 26px;
+      letter-spacing: 0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .info-bar {
+      max-width: 760px;
+      margin: 10px auto 16px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.8);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%   { transform: scale(1); opacity: 1; }
+      50%  { transform: scale(1.7); opacity: 0.25; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto 60px;
+      padding: 10px 0 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .slide-card {
+      position: relative;
+      width: 68%;
+      max-width: 580px;
+      margin: 32px 0;
+      padding: 8px 8px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      background: var(--card-bg);
+      box-shadow: 0 18px 46px rgba(15, 23, 42, 0.85);
+      cursor: pointer;
+
+      opacity: 0;
+      transition:
+        transform 0.8s ease-out,
+        opacity 0.8s ease-out,
+        box-shadow 0.3s ease-out,
+        border-color 0.3s ease-out;
+    }
+
+    .slide-card:hover {
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .slide-card .meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 0 4px 6px;
+    }
+
+    .slide-card .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      white-space: nowrap;
+    }
+
+    .slide-card .title {
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .media-box {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      background: #020617;
+    }
+
+    .media-box img,
+    .media-box video {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: 380px;
+      object-fit: contain;
+      background: #020617;
+    }
+
+    /* увеличенный путь скольжения */
+    .slide-card.from-left   { transform: translateX(-260px); }
+    .slide-card.from-right  { transform: translateX(260px); }
+    .slide-card.from-bottom { transform: translateY(200px); }
+
+    .slide-card.visible {
+      opacity: 1;
+      transform: translateX(0) translateY(0);
+    }
+
+    footer {
+      max-width: 1120px;
+      margin: 0 auto 24px;
+      padding: 0 16px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    footer strong { color: var(--accent); }
+
+    /* Оверлей просмотра */
+    .viewer-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.94);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 40;
+      padding: 16px;
+    }
+
+    .viewer-panel {
+      position: relative;
+      max-width: 96vw;
+      max-height: 96vh;
+      border-radius: 18px;
+      background: #020617;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.95);
+      padding: 10px 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .viewer-title { display: flex; align-items: center; gap: 8px; }
+
+    .viewer-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .viewer-media {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.9);
+      background: #020617;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .viewer-media img,
+    .viewer-media video {
+      max-width: 100%;
+      max-height: 80vh;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .btn {
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: default;
+      border-style: dashed;
+    }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 20px; }
+      main { padding: 4px 0 32px; }
+      .slide-card {
+        width: 88%;
+        margin: 24px 0;
+      }
+      .media-box img,
+      .media-box video {
+        max-height: 260px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Пилотный проект SERPiN</h1>
+    <p class="subtitle">Автокарусель слайдов и видеороликов</p>
+  </header>
+
+  <div class="info-bar">
+    <span class="dot" id="statusDot"></span>
+    <span id="infoText">
+      Страница автоматически прокручивается вверх по кругу.
+      Слайды и видео выезжают слева, справа или снизу, как только попадают в зону видимости.
+      Нажмите на любой элемент, чтобы остановить карусель и открыть его крупно.
+    </span>
+  </div>
+
+  <main id="slidesColumn">
+    <!-- Карточки создаются скриптом -->
+  </main>
+
+  <footer>
+    После клика автодвижение останавливается, и можно
+    <strong>спокойно рассматривать все материалы</strong>.
+  </footer>
+
+  <script>
+    console.log("Скрипт инициализируется…");
+
+    // ---------- 1. ДАННЫЕ (подставь свои файлы) ----------
+   const slidesData = [
+      { src: "slide1.png", title: "Слайд 1 – Инициирование проекта" },
+      { src: "slide2.png", title: "Слайд 2 – Базовое управление" },
+      { src: "slide3.png", title: "Слайд 3 – Процессы мониторинга" },
+      { src: "slide4.png", title: "Слайд 4 – ТЭО" },
+	   { src: "slide5.png", title: "Слайд 5 – Предварительный анализ" },
+	    { src: "slide6.png", title: "Слайд 6 – Техническая осуществимость" },
+		 { src: "slide7.png", title: "Слайд 7 – Рыночная осуществимость" },
+		  { src: "slide8.png", title: "Слайд 8 – Финансовая осуществимость" },
+		   { src: "slide9.png", title: "Слайд 9 – Базовый объем1" },
+		    { src: "slide10.png", title: "Слайд 10 – Базовый объем2" },
+			 { src: "slide11.png", title: "Слайд 11 – Структура дезомпозиции" },
+			  { src: "slide12.png", title: "Слайд 12 – Базовая стоймость1" },
+			   { src: "slide13.png", title: "Слайд 13 – Базовая стоймость2" },
+			    { src: "slide14.png", title: "Слайд 14 – Структура WBS" },
+				 { src: "slide15.png", title: "Слайд 15 – Базовый график1" },
+				  { src: "slide16.png", title: "Слайд 16 – Базовый график2" },
+				  { src: "slide17.png", title: "Слайд 17 – График Ганта" }
+    ];
+
+    // Видео. Подставь свои файлы:
+    const videosData = [
+      { src: "demo1.mp4", title: "Видео 1 – Общий вид" },
+      { src: "demo2.mp4", title: "Видео 2 – Словарь WBS" }
+    ];
+
+    const AUTO_SCROLL_STEP= 4.0; // скорость автоскролла (px за кадр)
+
+    const column    = document.getElementById("slidesColumn");
+    const infoText  = document.getElementById("infoText");
+    const statusDot = document.getElementById("statusDot");
+
+    const timeline = [];
+    slidesData.forEach((slide, index) => {
+      timeline.push({
+        type: "slide",
+        src: slide.src,
+        title: slide.title || `Слайд ${index + 1}`
+      });
+    });
+    videosData.forEach((video, index) => {
+      timeline.push({
+        type: "video",
+        src: video.src,
+        title: video.title || `Видео ${index + 1}`
+      });
+    });
+
+    let autoScrollActive = true;
+    let autoScrollId = null;
+    let currentViewerIndex = null;
+
+    const cards = [];
+
+    // ---------- 2. СОЗДАЁМ КАРТОЧКИ ----------
+    function buildCards() {
+      console.log("Создаём карточки, элементов:", timeline.length);
+      timeline.forEach((item, index) => {
+        const card = document.createElement("article");
+        card.classList.add("slide-card");
+
+        // направление: слайды чередуем слева/справа, видео — снизу
+        let directionClass;
+        if (item.type === "video") {
+          directionClass = "from-bottom";
+        } else {
+          directionClass = index % 2 === 0 ? "from-left" : "from-right";
+        }
+        card.classList.add(directionClass);
+
+        const meta = document.createElement("div");
+        meta.classList.add("meta");
+
+        const titleSpan = document.createElement("span");
+        titleSpan.classList.add("title");
+        titleSpan.textContent = item.title;
+
+        const badge = document.createElement("span");
+        badge.classList.add("badge");
+        badge.textContent = item.type === "slide"
+          ? `Слайд ${index + 1}`
+          : `Видео ${index + 1}`;
+
+        meta.appendChild(titleSpan);
+        meta.appendChild(badge);
+
+        const mediaBox = document.createElement("div");
+        mediaBox.classList.add("media-box");
+
+        if (item.type === "slide") {
+          const img = new Image();
+          img.src = item.src;
+          img.alt = item.title || "Слайд";
+          mediaBox.appendChild(img);
+        } else {
+          const video = document.createElement("video");
+          video.src = item.src;
+          video.controls = false;
+          video.preload = "metadata";
+          mediaBox.appendChild(video);
+        }
+
+        card.appendChild(meta);
+        card.appendChild(mediaBox);
+
+        // клик по карточке — стоп карусель + просмотрщик
+        card.addEventListener("click", () => {
+          stopAutoScroll();
+          openViewerByIndex(index);
+        });
+
+        // состояние (для контроля анимации)
+        card.dataset.state = "hidden"; // hidden / visible
+
+        column.appendChild(card);
+        cards.push(card);
+      });
+
+      // небольшой отступ внизу, чтобы последний элемент нормально доходил
+      const spacer = document.createElement("div");
+      spacer.style.height = "40vh";
+      column.appendChild(spacer);
+    }
+
+    // ---------- 3. ЛОГИКА СКОЛЬЖЕНИЯ (без дрожи, с повторами) ----------
+    function updateCardVisibility() {
+      const viewportHeight = window.innerHeight;
+
+      cards.forEach(card => {
+        const rect = card.getBoundingClientRect();
+        const state = card.dataset.state || "hidden";
+
+        const fullyAbove = rect.bottom <= 0;
+        const fullyBelow = rect.top >= viewportHeight;
+
+        const inBand =
+          rect.top < viewportHeight * 0.75 &&   // вошёл в верхнюю часть
+          rect.bottom > viewportHeight * 0.25;  // и ещё не ушёл слишком вверх
+
+        // если карточка вошла в "рабочую зону" впервые — запустить анимацию
+        if (inBand && state === "hidden") {
+          card.classList.add("visible");
+          card.dataset.state = "visible";
+        }
+
+        // если карточка полностью вышла из экрана — сбросить для следующего круга
+        if ((fullyAbove || fullyBelow) && state === "visible") {
+          card.classList.remove("visible");
+          card.dataset.state = "hidden";
+          // transform вернётся к from-left/from-right/from-bottom из CSS,
+          // так что на следующем круге снова будет скольжение
+        }
+      });
+    }
+
+    window.addEventListener("scroll", updateCardVisibility);
+
+    // ---------- 4. БЕСКОНЕЧНАЯ АВТОПРОКРУТКА ----------
+    function autoScrollStep() {
+      if (!autoScrollActive) return;
+
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (window.scrollY >= maxScroll - 1) {
+        // дошли до конца → возвращаемся наверх, как карусель
+        window.scrollTo(0, 0);
+        // сразу обновим состояние слайдов для нового круга
+        updateCardVisibility();
+      } else {
+        window.scrollBy(0, AUTO_SCROLL_STEP);
+      }
+
+      updateCardVisibility();
+      autoScrollId = requestAnimationFrame(autoScrollStep);
+    }
+
+    function startAutoScroll() {
+      console.log("Старт бесконечной автопрокрутки");
+      autoScrollActive = true;
+      autoScrollId = requestAnimationFrame(autoScrollStep);
+      if (statusDot) statusDot.style.display = "inline-block";
+      if (infoText) {
+        infoText.textContent =
+          "Страница движется вверх по кругу. Слайды и видео по очереди выезжают. Нажмите на любой элемент, чтобы остановить карусель.";
+      }
+    }
+
+    function stopAutoScroll() {
+      console.log("Остановка автопрокрутки");
+      autoScrollActive = false;
+      if (autoScrollId !== null) {
+        cancelAnimationFrame(autoScrollId);
+        autoScrollId = null;
+      }
+      if (statusDot) statusDot.style.display = "none";
+      if (infoText) {
+        infoText.textContent =
+          "Карусель остановлена. Прокручивайте страницу вручную и открывайте слайды/видео по необходимости.";
+      }
+    }
+
+    // ---------- 5. ПРОСМОТРЩИК ----------
+    function openViewerByIndex(index) {
+      if (index < 0 || index >= timeline.length) return;
+      currentViewerIndex = index;
+      const item = timeline[index];
+
+      let backdrop = document.getElementById("viewerBackdrop");
+      let titleEl, mediaEl, prevBtn, nextBtn, closeBtn;
+
+      if (!backdrop) {
+        backdrop = document.createElement("div");
+        backdrop.id = "viewerBackdrop";
+        backdrop.classList.add("viewer-backdrop");
+
+        const panel = document.createElement("div");
+        panel.classList.add("viewer-panel");
+
+        const header = document.createElement("div");
+        header.classList.add("viewer-header");
+
+        const titleWrap = document.createElement("div");
+        titleWrap.classList.add("viewer-title");
+
+        titleEl = document.createElement("span");
+        titleEl.id = "viewerTitle";
+        titleWrap.appendChild(titleEl);
+
+        const controls = document.createElement("div");
+        controls.classList.add("viewer-controls");
+
+        prevBtn = document.createElement("button");
+        prevBtn.id = "viewerPrev";
+        prevBtn.classList.add("btn");
+        prevBtn.textContent = "‹ Пред";
+
+        nextBtn = document.createElement("button");
+        nextBtn.id = "viewerNext";
+        nextBtn.classList.add("btn");
+        nextBtn.textContent = "След ›";
+
+        closeBtn = document.createElement("button");
+        closeBtn.id = "viewerClose";
+        closeBtn.classList.add("btn");
+        closeBtn.textContent = "Закрыть";
+
+        controls.appendChild(prevBtn);
+        controls.appendChild(nextBtn);
+        controls.appendChild(closeBtn);
+
+        header.appendChild(titleWrap);
+        header.appendChild(controls);
+
+        mediaEl = document.createElement("div");
+        mediaEl.id = "viewerMedia";
+        mediaEl.classList.add("viewer-media");
+
+        panel.appendChild(header);
+        panel.appendChild(mediaEl);
+        backdrop.appendChild(panel);
+        document.body.appendChild(backdrop);
+
+        prevBtn.addEventListener("click", () => {
+          if (currentViewerIndex > 0) openViewerByIndex(currentViewerIndex - 1);
+        });
+
+        nextBtn.addEventListener("click", () => {
+          if (currentViewerIndex < timeline.length - 1) openViewerByIndex(currentViewerIndex + 1);
+        });
+
+        closeBtn.addEventListener("click", closeViewer);
+
+        backdrop.addEventListener("click", e => {
+          if (e.target === backdrop) closeViewer();
+        });
+
+        window.addEventListener("keydown", viewerKeyHandler);
+      } else {
+        titleEl = document.getElementById("viewerTitle");
+        mediaEl = document.getElementById("viewerMedia");
+        prevBtn = document.getElementById("viewerPrev");
+        nextBtn = document.getElementById("viewerNext");
+        closeBtn = document.getElementById("viewerClose");
+      }
+
+      titleEl.textContent = item.title || (item.type === "slide" ? "Слайд" : "Видео");
+      mediaEl.innerHTML = "";
+
+      if (item.type === "slide") {
+        const img = new Image();
+        img.src = item.src;
+        img.alt = item.title || "Слайд";
+        mediaEl.appendChild(img);
+      } else {
+        const video = document.createElement("video");
+        video.src = item.src;
+        video.controls = true;
+        video.autoplay = true;
+        video.preload = "auto";
+        mediaEl.appendChild(video);
+      }
+
+      prevBtn.disabled = (index === 0);
+      nextBtn.disabled = (index === timeline.length - 1);
+    }
+
+    function closeViewer() {
+      const backdrop = document.getElementById("viewerBackdrop");
+      if (backdrop && backdrop.parentNode) {
+        backdrop.parentNode.removeChild(backdrop);
+      }
+      currentViewerIndex = null;
+      window.removeEventListener("keydown", viewerKeyHandler);
+    }
+
+    function viewerKeyHandler(e) {
+      if (currentViewerIndex === null) return;
+      if (e.key === "ArrowLeft" && currentViewerIndex > 0) {
+        openViewerByIndex(currentViewerIndex - 1);
+      } else if (e.key === "ArrowRight" && currentViewerIndex < timeline.length - 1) {
+        openViewerByIndex(currentViewerIndex + 1);
+      } else if (e.key === "Escape") {
+        closeViewer();
+      }
+    }
+
+    // ---------- 6. СТАРТ ----------
+    window.addEventListener("load", () => {
+      console.log("window.load, timeline length:", timeline.length);
+      if (!timeline.length) {
+        infoText.textContent = "Нет слайдов и видео. Заполните массивы slidesData и videosData.";
+        if (statusDot) statusDot.style.display = "none";
+        return;
+      }
+
+      window.scrollTo(0, 0);
+      buildCards();
+      // первая проверка, чтобы первые слайды сразу анимировались
+      updateCardVisibility();
+      // небольшой таймаут, чтобы всё отрисовалось
+      setTimeout(startAutoScroll, 600);
+    });
+  </script>
+</body>
+</html>
